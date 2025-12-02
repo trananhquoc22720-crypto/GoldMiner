@@ -17,9 +17,10 @@ const ANGLE_MIN = deg2rad(20);
 const ANGLE_MAX = deg2rad(160);
 const ANGULAR_SPEED = deg2rad(80); // deg/s
 const ROPE_MIN = 40;
-const ROPE_MAX = HEIGHT - 40;
-const SHOOT_SPEED = 350; // px/s
-const RETRACT_SPEED = 400; // px/s (base)
+// Limit to visible bottom edge rather than beyond canvas
+const ROPE_MAX = HEIGHT - ORIGIN.y - 10;
+const SHOOT_SPEED = 650; // px/s (faster extend)
+const RETRACT_SPEED = 900; // px/s (faster retract base)
 
 const GameCanvas: React.FC<GameCanvasProps> = ({ state, onAction, onStateChange }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -39,12 +40,18 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ state, onAction, onStateChange 
 
   useEffect(() => {
     const handleClick = () => shoot();
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.code === 'Space' || e.code === 'Enter' || e.code === 'KeyW') shoot();
+      if (e.code === 'KeyP' || e.code === 'Escape') onAction('pause-toggle');
+    };
     const el = canvasRef.current;
     if (el) el.addEventListener('click', handleClick);
+    window.addEventListener('keydown', handleKey);
     return () => {
       if (el) el.removeEventListener('click', handleClick);
+      window.removeEventListener('keydown', handleKey);
     };
-  }, [shoot]);
+  }, [onAction, shoot]);
 
   const tip = useMemo(() => {
     const x = ORIGIN.x + rope * Math.cos(angle);
@@ -104,7 +111,8 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ state, onAction, onStateChange 
         onStateChange({ timeLeft: t });
         if (t === 0 && !ended) {
           setEnded(true);
-          onAction('gameover');
+          if (state.score >= state.targetScore) onAction('level-success');
+          else onAction('level-failure');
           return;
         }
       }

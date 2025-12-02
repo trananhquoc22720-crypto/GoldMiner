@@ -15,6 +15,7 @@ const initialGameState: GameState = {
   hook: { angle: 0, length: 0, state: 'idle' },
   isRunning: false,
   level: 1,
+  targetScore: 0,
 };
 
 function App() {
@@ -40,11 +41,15 @@ function App() {
       timeLeft: level.timeLimit,
       golds: toGoldObjects(level.items),
       isRunning: true,
+      targetScore: level.targetScore,
+      level: gameState.level,
     });
     setScreen('game');
   };
 
-  const handleGameOver = () => {
+  const [lastResult, setLastResult] = useState<{ success: boolean } | null>(null);
+  const handleGameOver = (success?: boolean) => {
+    setLastResult(success == null ? null : { success });
     setScreen('gameover');
   };
 
@@ -62,7 +67,22 @@ function App() {
           <GameCanvas
             state={gameState}
             onAction={(action) => {
-              if (action === 'gameover') handleGameOver();
+              if (action === 'pause-toggle') {
+                setGameState((prev) => ({ ...prev, isRunning: !prev.isRunning }));
+              } else if (action === 'level-success') {
+                // advance to next level if exists; else show success screen
+                const nextLevelIndex = gameState.level; // current is 1-based
+                if (LEVELS[nextLevelIndex]) {
+                  setGameState((prev) => ({ ...prev, level: prev.level + 1 }));
+                  handleStart();
+                } else {
+                  handleGameOver(true);
+                }
+              } else if (action === 'level-failure') {
+                handleGameOver(false);
+              } else if (action === 'gameover') {
+                handleGameOver();
+              }
             }}
             onStateChange={(partial) =>
               setGameState((prev) => ({ ...prev, ...partial }))
@@ -71,7 +91,16 @@ function App() {
         </>
       )}
       {screen === 'gameover' && (
-        <GameOverScreen score={gameState.score} onRestart={handleRestart} />
+        <GameOverScreen
+          score={gameState.score}
+          targetScore={gameState.targetScore}
+          success={lastResult?.success}
+          onRestart={handleRestart}
+          onNext={() => {
+            setGameState((prev) => ({ ...prev, level: prev.level + 1 }));
+            handleStart();
+          }}
+        />
       )}
     </div>
   );

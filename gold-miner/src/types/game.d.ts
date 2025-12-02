@@ -34,6 +34,7 @@ export interface GameState {
   hook: HookObject;
   isRunning: boolean;
   level: number;
+  targetScore: number;
 }
 
 export interface LevelItemSeed {
